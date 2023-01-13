@@ -68,6 +68,13 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool) (
 	}
 
 	switch {
+	case fromHub:
+		data, err := hub.GetTask(ctx, rt.Run, uri)
+		if err != nil {
+			return "", err
+		}
+		rt.Logger.Infof("successfully fetched \"%s\" from hub URL: %s", uri, rt.Run.Info.Pac.HubURL)
+		return data, nil
 	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 		res, err := rt.Run.Clients.HTTP.Do(req)
@@ -100,13 +107,6 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool) (
 		}
 
 		rt.Logger.Infof("successfully fetched \"%s\" inside repository", uri)
-		return data, nil
-	case fromHub:
-		data, err := hub.GetTask(ctx, rt.Run, uri)
-		if err != nil {
-			return "", err
-		}
-		rt.Logger.Infof("successfully fetched \"%s\" from hub URL: %s", uri, rt.Run.Info.Pac.HubURL)
 		return data, nil
 	}
 	return "", fmt.Errorf(`cannot find "%s" anywhere`, uri)
@@ -165,7 +165,7 @@ func (rt RemoteTasks) GetPipelineFromAnnotations(ctx context.Context, annotation
 		return nil, fmt.Errorf("only one pipeline is allowed on remote resolution, we have received multiple of them: %+v", pipelinesAnnotation)
 	}
 	for _, v := range pipelinesAnnotation {
-		data, err := rt.getRemote(ctx, v, false)
+		data, err := rt.getRemote(ctx, v, true)
 		if err != nil {
 			return nil, fmt.Errorf("error getting remote pipeline %s: %w", v, err)
 		}
